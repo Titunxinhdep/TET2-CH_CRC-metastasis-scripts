@@ -66,13 +66,36 @@ Focused analysis of the *Tox* locus — CpG-level methylation, DMR characterizat
 
 ---
 
+### 4. `measure_tissue_area.py`
+Automated measurement of total liver section area on stitched whole-section H&E
+images exported from a Keyence BZ-X microscope. This area is the denominator
+used to compute liver metastatic tumour burden; the numerator, tumour area, was
+measured separately by manual delineation in Keyence BZ-X Analyzer.
+
+| Step | Description |
+|------|-------------|
+| 1 | Read the µm-per-pixel calibration from the XML metadata embedded in each BZ-X `.tif` |
+| 2 | Convert RGB to HSV and take the saturation channel |
+| 3 | Gaussian smoothing (sigma = 2 px) |
+| 4 | Global Otsu threshold on the smoothed saturation channel |
+| 5 | Discard connected components smaller than 0.1 mm² as debris |
+| 6 | Area = retained pixels × pixel size²; a hole-filled variant is recorded in parallel |
+| 7 | Write per-image and per-folder CSVs, plus an overlay JPEG with the detected boundary in yellow for visual inspection |
+
+Usage: `python3 measure_tissue_area.py "/path/to/folder"`
+
+**Python packages required:**
+Tested with Python 3.9.12 — `numpy` 2.0.2, `pillow` 11.3.0, `scikit-image` 0.24.0,
+`scipy` 1.13.1 (see `requirements.txt`).
+
 ## How to use
 
-1. Open each script and edit the **`GLOBAL PATHS`** section at the top — this is the only section that needs to be changed when running on a different machine.
+1. Open each script and edit the **`GLOBAL PATHS`** section at the top — this is the only section that needs to be changed when running on a different machine. This applies to the R scripts only; measure_tissue_area.py takes the folder as a command-line argument.
 2. Run scripts in this order:
    - `WGBS_complete_pipeline.R` → generates the annotation object (`.rds`) required by `Tox_WGBS_complete_pipeline.R`
    - `Tox_WGBS_complete_pipeline.R`
    - `scRNAseq_complete_pipeline.R` (independent)
+   - `measure_tissue_area.py`(independent; run from the command line)
 3. Intermediate objects are saved as `.rds` checkpoints — subsequent runs will reload from disk automatically.
 
 ## Data availability

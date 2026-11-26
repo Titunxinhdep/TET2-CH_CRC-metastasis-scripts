@@ -15,7 +15,9 @@ Analysis code for:
 **R environment**
 
 - R version 4.4.1 (2024-06-14)
-- Package versions used:
+- Package versions used for the analyses reported in the manuscript. Where a
+  package has since been updated in our environment, the version listed here is
+  the one the published results were generated with:
 
   - `Seurat` 5.5.0
   - `SeuratObject` 5.4.0
@@ -132,11 +134,17 @@ A demonstration dataset is provided in `demo/` for `measure_tissue_area.py`.
 
 **Contents**
 
-- `demo/liver_section_demo.tif` — one stitched whole-section H&E image of a mouse
-  liver exported from a Keyence BZ-X microscope, with the µm-per-pixel calibration
-  retained in the embedded XML metadata.
-- `demo/expected_output/` — the CSV files and overlay JPEG produced by the script
-  on this image.
+```
+demo/
+└── control_demo/
+    └── 4.tif          one stitched whole-section H&E image of a mouse liver,
+                       exported from a Keyence BZ-X microscope with the
+                       µm-per-pixel calibration retained in the embedded
+                       XML metadata
+```
+
+`demo/expected_output/` contains the files the script produces from this image,
+for comparison.
 
 **Instructions to run on the demo data**
 
@@ -144,18 +152,30 @@ A demonstration dataset is provided in `demo/` for `measure_tissue_area.py`.
 python3 measure_tissue_area.py "demo"
 ```
 
-**Expected output**
+**Expected output**, written to `demo/results/`:
 
-- `demo/liver_section_demo_area.csv` — total liver section area in mm², with and
-  without hole filling
-- `demo/area_summary.csv` — per-folder summary
-- `demo/liver_section_demo_overlay.jpg` — the input image with the detected tissue
-  boundary drawn in yellow, for visual confirmation
+| File | Content |
+|------|---------|
+| `area_per_image.csv` | one row per image: calibration, tissue area, hole-filled area, number of tissue pieces |
+| `total_by_folder.csv` | per-folder totals and image count |
+| `missing_calibration.csv` | images with no calibration in the metadata (empty for this demo) |
+| `overlay/control_demo_4.jpg` | the input image with the detected tissue boundary drawn in yellow, for visual confirmation |
 
-The measured total section area for this image is >>> FILL: e.g. 42.18 mm².
+For this image the script reports:
 
-**Expected run time** for the demo on a normal desktop computer:
->>> FILL: e.g. under 30 seconds for this single image.
+```
+control_demo: 1 images, total 151.48 mm2
+```
+
+and `total_by_folder.csv` contains:
+
+```
+folder,n_images,total_tissue_mm2,total_tissue_filled_mm2
+control_demo,1,151.479,154.052
+```
+
+**Expected run time** for the demo: approximately 3 seconds on the workstation
+described above (14-core Intel Xeon W). Run time scales with image size.
 
 **Note on the R pipelines.** The single-cell and bisulfite pipelines operate on
 full sequencing datasets and cannot be meaningfully demonstrated on a reduced
@@ -244,7 +264,41 @@ measured separately by manual delineation in Keyence BZ-X Analyzer.
 | 6 | Area = retained pixels × pixel size²; a hole-filled variant is recorded in parallel |
 | 7 | Write per-image and per-folder CSVs, plus an overlay JPEG with the detected boundary in yellow for visual inspection |
 
-Usage: `python3 measure_tissue_area.py "/path/to/folder"`
+**Usage**
+
+```bash
+python3 measure_tissue_area.py "/path/to/parent_folder"
+```
+
+The script is pointed at a **parent folder** containing one sub-folder per animal.
+Two naming rules are enforced and are easy to miss:
+
+- Only sub-folders whose name begins with `control` or `KO` are read
+  (case-insensitive; set by `FOLDER_PREFIXES` at the top of the script).
+- Within each sub-folder, only files whose name is a **plain number** are
+  measured — `1.tif`, `2.tif` … `10.tif`. Files such as `1-t.tif`, renamed files,
+  and macOS `._` companion files are ignored (set by `IMAGE_NAME`).
+
+```
+parent_folder/
+├── control 6-2/
+│   ├── 1.tif      measured
+│   ├── 1-t.tif    ignored
+│   └── 2.tif      measured
+└── KO1-1/
+    └── 1.tif      measured
+```
+
+Results are written to `parent_folder/results/`.
+
+Individual images excluded because of a technical fault are listed in the
+`EXCLUDE` set at the top of the script, as `(folder name, file name)` pairs, so
+that every exclusion is visible in the code rather than applied silently. One
+image is excluded in this study, `("control 2-2", "9.tif")`: a large region of
+the tissue was torn during sectioning, so the section area measured on that
+slide would not reflect the true area of the liver section. The exclusion was
+made on the basis of the physical condition of the section, independently of the
+measured value.
 
 **Python packages required:**
 Tested with Python 3.9.12 — `numpy` 2.0.2, `pillow` 11.3.0, `scikit-image` 0.24.0,
